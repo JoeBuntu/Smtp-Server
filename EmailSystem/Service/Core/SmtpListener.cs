@@ -16,6 +16,7 @@ namespace Service
         private bool _HasStarted = false;
         private List<TcpListener> _Listeners = new List<TcpListener>();
         private Dictionary<TcpListener, List<TcpClient>> _ListenerClients = new Dictionary<TcpListener, List<TcpClient>>();
+        private Guid _ActivityId; 
  
         #region Properties
 
@@ -95,6 +96,10 @@ namespace Service
         public void Start()
         {
             _HasStarted = true;
+            _ActivityId = Guid.NewGuid();
+            Utility.TraceSource.TraceTransfer(0, "Starting Listener", _ActivityId);
+
+            
 
             using (new SectionLogger("Starting"))
             {
