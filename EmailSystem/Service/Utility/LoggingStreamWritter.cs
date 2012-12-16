@@ -8,16 +8,16 @@ namespace Service
 {
     public class LoggingStreamWriter : StreamWriter
     {
-        private ILogger _Logger;
-        public LoggingStreamWriter(Stream stream, ILogger logger)
+        private ScopedActivity _Activity;
+        public LoggingStreamWriter(Stream stream, ScopedActivity activity)
             : base(stream)
         {
-            _Logger = logger;
+            _Activity = activity;
         }
 
         public void WriteLineWithLogging(string line, string label)
         {
-            _Logger.Log("{0}: {1}", label, line);
+            _Activity.Log("{0}: {1}", label, line);
             base.WriteLine(line);
         }
     }

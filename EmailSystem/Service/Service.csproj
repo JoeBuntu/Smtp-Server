@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ScopedActivity.cs" />
     <Compile Include="Utility\DefaultLogger.cs" />
     <Compile Include="Core\FileSystemMailPackageQueue.cs" />
     <Compile Include="Abstract\ILogger.cs" />

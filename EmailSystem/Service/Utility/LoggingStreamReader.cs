@@ -8,17 +8,17 @@ namespace Service
 {
     public class LoggingStreamReader : StreamReader
     {
-        private ILogger _Logger;
-        public LoggingStreamReader(Stream stream, ILogger logger)
+        private ScopedActivity _Activity;
+        public LoggingStreamReader(Stream stream, ScopedActivity activity)
             : base(stream)
         {
-            _Logger = logger;
+            _Activity = activity;
         }
 
         public string ReadLineWithLogging(string label)
         {
             string retVal = base.ReadLine();
-            _Logger.Log("{0}: {1}", label, retVal);
+            _Activity.Log("{0}: {1}", label, retVal);
             return retVal;
         } 
     }

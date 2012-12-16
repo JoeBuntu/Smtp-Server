@@ -17,24 +17,24 @@ namespace Service
         private Stream _UnderlyingStream;
         private LoggingStreamReader _Reader;
         private LoggingStreamWriter _Writer;
-        private ILogger _Logger;
+        private ScopedActivity _Activity;
         private IMailPackageQueue _MailPackageQueue;
         private const string SERVER_LABEL = "S";
         private const string CLIENT_LABEL = "C";
 
         #region Initialization
 
-        public SmtpClientProcessor(TcpClient client, ILogger logger)
-            : this(client, SmtpSecurity.None, null, logger)
+        public SmtpClientProcessor(TcpClient client )
+            : this(client, SmtpSecurity.None, null)
         { 
         }
 
-        public SmtpClientProcessor(TcpClient client, SmtpSecurity securityMode, X509Certificate certificate, ILogger logger)
-        {
+        public SmtpClientProcessor(TcpClient client, SmtpSecurity securityMode, X509Certificate certificate)
+        {           
             _Client = client;
             _SecurityMode = securityMode;
             _Certificate = certificate;
-            _Logger = logger;
+            _Activity = new ScopedActivity("SmtpClientProcessor");
             _MailPackageQueue = Kernel.Get<IMailPackageQueue>();
         }
 
@@ -95,7 +95,7 @@ namespace Service
                 else if (line.StartsWith(ClientCommands.DATA))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.START_DATA_354, SERVER_LABEL);
-                    _Logger.Log("Reading data...");
+                    _Activity.Log("Reading data..."); 
 
                     StringBuilder sb = new StringBuilder();
                     for(line = _Reader.ReadLine(); line != ClientCommands.END_DATA; line = _Reader.ReadLine())
@@ -130,12 +130,12 @@ namespace Service
 
         private void PrepareReaderStream()
         {
-            _Reader = new LoggingStreamReader(_UnderlyingStream, _Logger);
+            _Reader = new LoggingStreamReader(_UnderlyingStream, _Activity);
         }
 
         private void PrepareWriterStream()
         {
-            _Writer = new LoggingStreamWriter(_UnderlyingStream, _Logger);
+            _Writer = new LoggingStreamWriter(_UnderlyingStream, _Activity);
             _Writer.AutoFlush = true;
             _Writer.NewLine = "\r\n";
         }
@@ -157,17 +157,27 @@ namespace Service
  
         public void Dispose()
         {
-            if (_Writer != null)
+            try
             {
-                _Writer.Dispose();
+                if (_Writer != null)
+                {
+                    _Writer.Dispose();
+                }
+                if (_Reader != null)
+                {
+                    _Reader.Dispose();
+                }
+                if (_UnderlyingStream != null)
+                {
+                    _UnderlyingStream.Dispose();
+                }
             }
-            if (_Reader != null)
+            finally
             {
-                _Reader.Dispose();
-            }
-            if (_UnderlyingStream != null)
-            {
-                _UnderlyingStream.Dispose();
+                if(_Activity != null)
+                {
+                    _Activity.Dispose();
+                }
             }
         }
 

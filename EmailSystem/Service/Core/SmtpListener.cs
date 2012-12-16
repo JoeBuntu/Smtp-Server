@@ -11,12 +11,12 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Service
 {
-    public class SmtpListener
+    public class SmtpListener : IDisposable
     {
         private bool _HasStarted = false;
+        private ScopedActivity _Activity;
         private List<TcpListener> _Listeners = new List<TcpListener>();
-        private Dictionary<TcpListener, List<TcpClient>> _ListenerClients = new Dictionary<TcpListener, List<TcpClient>>();
-        private Guid _ActivityId; 
+        private Dictionary<TcpListener, ListenerInfo> _ListenerInfos = new Dictionary<TcpListener, ListenerInfo>();         
  
         #region Properties
 
@@ -94,172 +94,133 @@ namespace Service
         #region Core
 
         public void Start()
-        {
-            _HasStarted = true;
-            _ActivityId = Guid.NewGuid();
-            Utility.TraceSource.TraceTransfer(0, "Starting Listener", _ActivityId);
-
-            
-
-            using (new SectionLogger("Starting"))
+        { 
+            try
             {
-                using (new SectionLogger("Creating NonSecure Listeners"))
+                _HasStarted = true;
+                _Activity = new ScopedActivity("SmtpListener");
+                
+
+                InitializeListeners();
+            }
+            catch (Exception ex)
+            {
+                if (_Activity != null)
                 {
-                    InitializeListenerGroup("NonSecure_Listener", NonSecurePorts, AcceptNonSecureClient);
+                    _Activity.LogException(ex, "Exception Occurred While Starting Smtp Listener");                    
                 }
-                using (new SectionLogger("Creating Secure Listeners"))
-                {
-                    InitializeListenerGroup("Secure_Listener", SecurePorts, AcceptSecureClient);
-                }
-            } 
+            }        
         }
 
-        private void InitializeListenerGroup(string groupName, int[] ports, AsyncCallback clientAcceptCallback)
+        private void InitializeListeners()
         {
-            for (int i = 0; i < ports.Length; i++)
+            _Activity.Log("Initializing Listeners"); 
+
+            int[] allPorts = NonSecurePorts.Concat(SecurePorts).ToArray();
+            for (int i = 0; i < allPorts.Length; i++)
             {
                 try
                 {
                     //create listener
-                    int port = ports[i];
-                    Log("Initializing {0}_{1}: Address: {2} Port: {3}", groupName, i + 1, ListenAddress, port);
+                    int port = allPorts[i];
+                    SmtpSecurity securityMode = DetermineSecurityMode(port);
+                    _Activity.Log("Listener[{0}]: Address: {2} Port: {3} Security: {1}", i + 1, securityMode, ListenAddress, port); 
+ 
                     TcpListener listener = new TcpListener(this.ListenAddress, port);
-
-                    //start listener
                     listener.Start();
-                    Log("Started {0}_{1}", groupName, i + 1);
+                    _Activity.Log("Listener[{0}]: Started", i + 1);
 
                     //prepare collections for listener and listener clients
-                    _Listeners.Add(listener);
-                    _ListenerClients.Add(listener, new List<TcpClient>());
+                    _Listeners.Add(listener); 
+                    _ListenerInfos.Add(listener, new ListenerInfo(securityMode, port));
 
-                    listener.BeginAcceptTcpClient(clientAcceptCallback, listener);
-                    Log("{0}_{1} now waiting for client connections", groupName, i + 1);
+                    listener.BeginAcceptTcpClient(AcceptClient, listener);
+                    _Activity.Log("Listener[{0}]: now waiting for client connections", i + 1);
                 }
                 catch (Exception ex)
                 {
-                    LogException(ex, "An exception occurred while initializing {0}_{1}", groupName, i + 1);
+                    _Activity.LogException(ex, "An exception occurred while initializing Listener[{0}]", i + 1); 
                 }
             }
+            _Activity.Log("Finished Initializing Listeners");
         }
 
-        private void AcceptNonSecureClient(IAsyncResult result)
-        {
-            TcpClient client = null;
-            TcpListener listener = (TcpListener)result.AsyncState;
-
-            using (new SectionLogger("Accepting NonSecure Client Connection"))
-            { 
-                //this section is critical for the robustness of the application.
-                //it should only accept the client and begin accepting new connections
-                //in the finally block
-                try
-                {
-                    Log("Listener: {0}", listener.LocalEndpoint);
-                    client = listener.EndAcceptTcpClient(result);
-                }
-                catch (Exception ex)
-                {
-                    LogException(ex, "An exception occurred while accepting client connection");
-                }
-                finally
-                {
-                    listener.BeginAcceptTcpClient(AcceptNonSecureClient, listener);
-                }
-            }
-
-            //if client was successfully accepted, continue the processing chain
-            if (client != null)
-            {
-                ProcessClient(client, listener, SmtpSecurity.STARTTLS);
-            }
-        }
-
-        private void AcceptSecureClient(IAsyncResult result)
-        {
-            TcpClient client = null;
-            TcpListener listener = (TcpListener)result.AsyncState;
-
-            using (new SectionLogger("Accepting Secure Client Connection"))
-            {
-                //this section is critical for the robustness of the application.
-                //it should only accept the client and begin accepting new connections
-                //in the finally block
-                try
-                {
-                    Log("Listener: {0}", listener.LocalEndpoint);
-                    client = listener.EndAcceptTcpClient(result);
-                }
-                catch (Exception ex)
-                {
-                    LogException(ex, "An exception occurred while accepting client connection");
-                }
-                finally
-                {
-                    listener.BeginAcceptTcpClient(AcceptNonSecureClient, listener);
-                }
-            }
-
-            //if client was successfully accepted, continue the processing chain
-            if (client != null)
-            { 
-                ProcessClient(client, listener, SmtpSecurity.SSL);
-            }
-        }
-
-        private void ProcessClient(TcpClient client, TcpListener listener, SmtpSecurity securityMode)
+        private void AcceptClient(IAsyncResult result)
         { 
-            using (new SectionLogger("Processing Client"))
+            using(ScopedActivity localActivity = new ScopedActivity("Accepting Client Connection"))
             {
-                List<TcpClient> activeClients = null;
+                TcpClient client = null;
+                TcpListener listener = (TcpListener)result.AsyncState;
+
+                //this section is critical for the robustness of the application.
+                //it should only accept the client and begin accepting new connections
+                //in the finally block
                 try
                 {
-                    //gather some metrics...
-                    activeClients = _ListenerClients[listener];
-                    activeClients.Add(client);
+                    localActivity.Log("Listener: {0}", listener.LocalEndpoint);
+                    client = listener.EndAcceptTcpClient(result);
+                }
+                catch (Exception ex)
+                {
+                    localActivity.LogException(ex, "An exception occurred while accepting client connection");
+                }
+                finally
+                {
+                    listener.BeginAcceptTcpClient(AcceptClient, listener);
+                }
 
-                    Log("Client: {0}", client.Client.RemoteEndPoint);
-                    Log("Active Connections for Listener: {0}", activeClients.Count);
+                //if client was successfully accepted, continue the processing chain
+                if (client != null)
+                {
+                    ProcessClient(client, listener, localActivity);
+                }
+            }
+        }
 
-                    //run validation checks...
-                    if (ValidateClient(client))
+        private void ProcessClient(TcpClient client, TcpListener listener, ScopedActivity activity)
+        {
+            ListenerInfo info = _ListenerInfos[listener];
+            try
+            { 
+                info.Clients.Add(client);
+
+                //gather some metrics...
+                activity.Log("Client: {0}", client.Client.RemoteEndPoint);
+                activity.Log("Active Connections for Listener: {0}", info.Clients.Count);
+
+                //run validation checks...
+                if (ValidateClient(client, activity))
+                {
+                    //process client
+                    activity.Log("Exchanging Commands");
+                    using (SmtpClientProcessor clientProcessor = new SmtpClientProcessor(client, info.SecurityMode, ServerCertificate))
                     {
-                        //process client
-                        using (new SectionLogger("Exchanging Commands"))
-                        {
-                            using (SmtpClientProcessor clientProcessor = new SmtpClientProcessor(client, securityMode, ServerCertificate, Kernel.Get<ILogger>()))
-                            {
-                                clientProcessor.Process();
-                            }
-                        }
+                        clientProcessor.Process();
                     }
                 }
-                finally
-                {
-                    activeClients.Remove(client);
-                    client.Close();
-                }
+            }
+            finally
+            {
+                info.Clients.Remove(client);
+                client.Close();
             }
         }
 
-        private bool ValidateClient(TcpClient client)
+        private bool ValidateClient(TcpClient client, ScopedActivity activity)
         {
             bool retVal = false;
-            using (new SectionLogger("Client Validation"))
+            activity.Log("Checking if client IP Address is black listed");
+            IPEndPoint clientEndpoint = (IPEndPoint)client.Client.RemoteEndPoint;
+            if (!BlackListedIpAddresses.Contains(clientEndpoint.Address))
             {
-                Log("Checking if client IP Address is black listed");
-                IPEndPoint clientEndpoint = (IPEndPoint)client.Client.RemoteEndPoint;
-                if (!BlackListedIpAddresses.Contains(clientEndpoint.Address))
-                {
-                    //address is not black listed
-                    Log("Address {0} is allowed, client passes validation checks", clientEndpoint.Address);
-                    retVal = true;
-                }
-                else
-                {
-                    //address is black listed
-                    Log("Not Processing Client, Client IP Address is black listed: {0}", clientEndpoint.Address);
-                }
+                //address is not black listed
+                activity.Log("Address {0} is allowed, client passes validation checks", clientEndpoint.Address);
+                retVal = true;
+            }
+            else
+            {
+                //address is black listed
+                activity.Log("Not Processing Client, Client IP Address is black listed: {0}", clientEndpoint.Address);
             }
             return retVal;
         }
@@ -268,30 +229,32 @@ namespace Service
 
         #region Helpers
 
-        private class SectionLogger : IDisposable
+        private class ListenerInfo
         {
-            public SectionLogger(string sectionTitle)
+            public ListenerInfo(SmtpSecurity securityMode, int port)
             {
-                Trace.WriteLine(string.Empty);
-                Trace.WriteLine(sectionTitle + ":");
-                Trace.Indent();
+                Clients = new List<TcpClient>();
+                SecurityMode = securityMode;
+                Port = port;
             }
+
+            public List<TcpClient> Clients { get; private set; }
+            public SmtpSecurity SecurityMode { get; private set; }
+            public int Port { get; private set; }
+        }
  
-            public void Dispose()
+        private SmtpSecurity DetermineSecurityMode(int port)
+        {
+            SmtpSecurity retVal;
+            if (NonSecurePorts.Contains(port))
             {
-                Trace.Unindent();
+                retVal = SmtpSecurity.STARTTLS;
             }
-        }
-
-        private void Log(string format, params object[] arguments)
-        {
-            Trace.WriteLine(string.Format(format, arguments));
-        }
-
-        private void LogException(Exception ex, string format, params object[] arguments)
-        {
-            Trace.WriteLine(string.Format(format, arguments));
-            Trace.WriteLine(ex.ToString());
+            else
+            {
+                retVal = SmtpSecurity.SSL;
+            }
+            return retVal;
         }
 
         private void CheckForNullArgument(string name, object argument)
@@ -308,5 +271,25 @@ namespace Service
 
         #endregion
  
+        public void Dispose()
+        {
+            foreach (TcpListener listener in _Listeners)
+            {
+                if (_ListenerInfos != null)
+                {
+                    ListenerInfo info = _ListenerInfos[listener];
+                    if (info.Clients != null)
+                    {
+                        foreach (TcpClient client in info.Clients)
+                        {
+                            client.Close();
+                        }
+                    }
+                }
+                listener.Stop();
+            }
+            _Activity.Dispose();
+        }
+
     }
 }

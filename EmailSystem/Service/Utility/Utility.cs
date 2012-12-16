@@ -8,6 +8,9 @@ namespace Service
 {
     public class Utility
     {
-        public static readonly TraceSource TraceSource = new TraceSource("EmailingSystem.Service", SourceLevels.Information);
+        public static TraceSource CreateTraceSource()
+        {
+            return new TraceSource("EmailingSystem.Service", SourceLevels.All);
+        }
     }
 }
