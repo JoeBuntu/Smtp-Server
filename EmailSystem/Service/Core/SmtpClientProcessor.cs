@@ -62,7 +62,14 @@ namespace Service
             //begin command exchange...
             for (string line = _Reader.ReadLineWithLogging(CLIENT_LABEL); line != null; line = _Reader.ReadLineWithLogging(CLIENT_LABEL))
             {
-                if (line.StartsWith(ClientCommands.EHLO))
+                if (line.StartsWith(ClientCommands.HELO))
+                {
+                    _Writer.WriteLineWithLogging(ServerCommands.SIZE_250, SERVER_LABEL);
+                    _Writer.WriteLineWithLogging(ServerCommands.STARTTLS_250, SERVER_LABEL);
+                    _Writer.WriteLineWithLogging(ServerCommands.HELP_250, SERVER_LABEL);
+                    mailPackage.Host = line.Replace(ClientCommands.HELO, string.Empty).Trim();
+                }
+                if (line.StartsWith(ClientCommands.EHLO)) //Extended HELO
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.SIZE_250, SERVER_LABEL);
                     _Writer.WriteLineWithLogging(ServerCommands.STARTTLS_250, SERVER_LABEL);
@@ -181,6 +188,7 @@ namespace Service
         {
             public const string STARTTLS = "STARTTLS";
             public const string EHLO = "EHLO";
+            public const string HELO = "HELO";
             public const string RCPT_TO = "RCPT TO";
             public const string MAIL_FROM = "MAIL FROM";
             public const string QUIT = "QUIT";
