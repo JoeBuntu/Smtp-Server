@@ -1,0 +1,45 @@
+MultiThreaded Considerations
+	- resource contention
+
+	Robustness / Reliability
+ 
+		1. Accepting Incoming Messages are first priority.
+			- application immediately starts accepting new connections before processing existing connections
+			
+		2. Processing Existing Connections is 2nd priority
+			- each processed on seperate thread
+			
+		3. Memory foot print is kept low by the use of streaming.
+			At no point is entire message data payload in memory. 
+			Data is read as a continuous stream that is streamed into persistent storage.
+		
+		4. MSMQ persistence - first priority is getting message stream into persistent storage.
+		In this case MSMQ is used. Only minimal processing geared only towards security
+		is performed before the message reaches MSMQ. the messages are volitile and the
+		idea is to minimize the time and chance for problems between receiving the message
+		and storing it for later processing.
+
+	Security Considerations:
+		
+		1. Secure Transport Protocols
+			a. SSL 
+			b. STARTTSL (clear text -> SSL)
+			
+			- It should be noted that these do not garuntee End-To-End security,
+			  because the application does not have control over the transport security 
+			  used by middle-man servers
+			 
+			- Encrypted emails are not supported but could be implemented as 
+			  a reliable End-To-End security solution. However, the use of encrypted
+			  email messages would probably be too complicated for most end-users.
+			  
+
+		2. Malicious External Users
+
+			- Application supports ability to blacklist IP Addresses. This is not fail
+			  proof, but it is one measure
+		
+			- (Not Implemented) Could impose thresholds on connections/IP/time period
+			
+			- (Will be Implemented) Application will only accept messages from
+			  a known list of users
