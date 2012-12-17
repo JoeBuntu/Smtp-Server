@@ -1,0 +1,15 @@
+Items
+	1. All calls in stream processing should be async
+		- Authenticate
+		- Readline?
+		- DataStream Copy
+
+	2. Use timeouts per RFC specs
+
+	3. [X] SmtpDataStream -> Generic sequence terminating data stream
+
+	4. Need to support concept of 'Mail Transaction'
+		- one connection may submit many transactions
+
+	5. Improved command support
+
