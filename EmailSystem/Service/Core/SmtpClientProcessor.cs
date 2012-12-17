@@ -57,9 +57,8 @@ namespace Service
 
             //first and foremost issue standard greeting
             _Writer.WriteLineWithLogging(ServerCommands.GREETING_220, SERVER_LABEL);
-            
-
-            //begin command exchange...
+ 
+            //begin command exchange... 
             for (string line = _Reader.ReadLineWithLogging(CLIENT_LABEL); line != null; line = _Reader.ReadLineWithLogging(CLIENT_LABEL))
             {
                 //HELO = Basic hello
@@ -117,7 +116,8 @@ namespace Service
                     _Activity.Log("Reading data...");
 
                     mailPackage.ReferenceId = _Activity.ActivityId;
-                    Stream data = new SmtpDataStream(_UnderlyingStream, _Reader.CurrentEncoding);
+                    byte[] dataStreamTerminator = _Reader.CurrentEncoding.GetBytes("/r/n./r/n");
+                    Stream data = new SequenceTerminatingStream(_UnderlyingStream, dataStreamTerminator);
                     _MailPackageQueue.Add(mailPackage, data);
 
                     _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);

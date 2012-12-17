@@ -46,10 +46,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Abstract\IDataStreamRepository.cs" />
+    <Compile Include="Utility\SequenceTerminatingStream.cs" />
     <Compile Include="Utility\FileSystemMailPackageQueue.cs" />
     <Compile Include="Utility\MsmqMailPackageQueue.cs" />
     <Compile Include="Abstract\FileSystemStreamRepository.cs" />
-    <Compile Include="Utility\SmtpDataStream.cs" />
     <Compile Include="Utility\ScopedActivity.cs" />
     <Compile Include="Abstract\IMailPackageQueue.cs" />
     <Compile Include="Utility\Kernel.cs" />
