@@ -9,7 +9,7 @@ namespace Service
 {
     public class FileSystemMailPackageQueue : IMailPackageQueue
     {
-        public void Add(MailPackage package)
+        public void Add(MailPackage package, Stream data)
         {
             using (FileStream fs = File.OpenWrite(string.Format("package.{0:MMddyyyyHHmmssfffff}.txt", DateTime.Now)))
             {

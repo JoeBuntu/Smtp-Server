@@ -6,6 +6,7 @@ using System.IO;
 
 namespace Service
 {
+    [Serializable]
     public class MailPackage
     {
         public MailPackage()
@@ -17,6 +18,6 @@ namespace Service
         public DateTime Received { get; set; }
         public string From { get; set; }
         public List<string> Tos { get; set; }
-        public string Data { get; set; }
+        public Guid ReferenceId { get; set; }
     }
 }

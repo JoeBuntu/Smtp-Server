@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
 
 namespace Service
 {
     public interface IMailPackageQueue
     {
-        void Add(MailPackage package);
+        void Add(MailPackage package, Stream data);
     }
 }

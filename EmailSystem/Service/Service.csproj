@@ -36,6 +36,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Messaging" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
@@ -43,10 +44,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ScopedActivity.cs" />
-    <Compile Include="Utility\DefaultLogger.cs" />
+    <Compile Include="Core\DataContractMessageFormatter.cs" />
+    <Compile Include="Core\MsmqMailPackageQueue.cs" />
+    <Compile Include="Utility\SmtpDataStream.cs" />
+    <Compile Include="Utility\ScopedActivity.cs" />
     <Compile Include="Core\FileSystemMailPackageQueue.cs" />
-    <Compile Include="Abstract\ILogger.cs" />
     <Compile Include="Abstract\IMailPackageQueue.cs" />
     <Compile Include="Utility\Kernel.cs" />
     <Compile Include="Utility\LoggingStreamReader.cs" />

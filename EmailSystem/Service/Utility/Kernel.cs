@@ -11,11 +11,18 @@ namespace Service
         {
             T retVal = null;
             System.Type typeOfT = typeof(T);
-            if(typeof(ILogger).IsAssignableFrom(typeOfT))
+            if (typeof(IMailPackageQueue).IsAssignableFrom(typeOfT))
             {
-                retVal = new DefaultLogger() as T;
+                string path = @".\Private$\EmailService";
+                System.Messaging.IMessageFormatter formatter = Get<System.Messaging.IMessageFormatter>();
+                IDataStreamRepository streamRepository = Get<IDataStreamRepository>();
+                retVal = new MsmqMailPackageQueue(path, formatter, streamRepository) as T;
             }
-            else if (typeof(IMailPackageQueue).IsAssignableFrom(typeOfT))
+            if (typeof(System.Messaging.IMessageFormatter).IsAssignableFrom(typeOfT))
+            {
+                retVal = new System.Messaging.BinaryMessageFormatter() as T;
+            }
+            if (typeof(IDataStreamRepository).IsAssignableFrom(typeOfT))
             {
                 retVal = new FileSystemMailPackageQueue() as T;
             }

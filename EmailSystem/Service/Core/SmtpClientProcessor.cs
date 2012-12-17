@@ -95,24 +95,20 @@ namespace Service
                 else if (line.StartsWith(ClientCommands.DATA))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.START_DATA_354, SERVER_LABEL);
-                    _Activity.Log("Reading data..."); 
+                    _Activity.Log("Reading data...");
 
-                    StringBuilder sb = new StringBuilder();
-                    for(line = _Reader.ReadLine(); line != ClientCommands.END_DATA; line = _Reader.ReadLine())
-                    {
-                        sb.AppendLine(line);                        
-                    }
-                    mailPackage.Data = sb.ToString();
+                    mailPackage.ReferenceId = _Activity.ActivityId;
+                    Stream data = new SmtpDataStream(_UnderlyingStream, _Reader.CurrentEncoding);
+                    _MailPackageQueue.Add(mailPackage, data);
 
                     _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
+
                 }
                 else if(line.StartsWith(ClientCommands.QUIT))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.BYE_221, SERVER_LABEL);
                 }
-            }
-
-            _MailPackageQueue.Add(mailPackage);
+            } 
         }
  
         private void PrepareUnderlyingDataStream()
@@ -200,7 +196,7 @@ namespace Service
             public const string OK_250 = "250 OK";
             public const string BYE_221 = "221 Bye";
 
-            public const string SIZE_250 = "250-SIZE 1000000";
+            public const string SIZE_250 = "250-SIZE 10000000";
             public const string STARTTLS_250 = "250-STARTTLS";
             public const string HELP_250 = "250 HELP";
 
