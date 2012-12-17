@@ -10,6 +10,8 @@ using System.Net.Security;
 using System.Collections;
 using System.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
+using System.Runtime.Serialization;
+using System.Xml;
 
 namespace Service
 {
@@ -22,7 +24,7 @@ namespace Service
         {
             _Activity = new ScopedActivity("Application");
             try
-            {  
+            {
                 Program p = new Program();
                 p.Run();
 
@@ -40,9 +42,9 @@ namespace Service
 
         private void Run()
         {
-            SmtpListener listener = new SmtpListener();
-            listener.ServerCertificate = LoadCertificate();
-            listener.Start();
+            _Listener = new SmtpListener();
+            _Listener.ServerCertificate = LoadCertificate();
+            _Listener.Start();
         }
 
         private X509Certificate LoadCertificate()
