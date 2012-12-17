@@ -62,6 +62,7 @@ namespace Service
             //begin command exchange...
             for (string line = _Reader.ReadLineWithLogging(CLIENT_LABEL); line != null; line = _Reader.ReadLineWithLogging(CLIENT_LABEL))
             {
+                //HELO = Basic hello
                 if (line.StartsWith(ClientCommands.HELO))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.SIZE_250, SERVER_LABEL);
@@ -69,17 +70,26 @@ namespace Service
                     _Writer.WriteLineWithLogging(ServerCommands.HELP_250, SERVER_LABEL);
                     mailPackage.Host = line.Replace(ClientCommands.HELO, string.Empty).Trim();
                 }
-                if (line.StartsWith(ClientCommands.EHLO)) //Extended HELO
+                //EHLO = Extended Helo, Extended SMTP commands 
+                else if (line.StartsWith(ClientCommands.EHLO))  
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.SIZE_250, SERVER_LABEL);
                     _Writer.WriteLineWithLogging(ServerCommands.STARTTLS_250, SERVER_LABEL);
                     _Writer.WriteLineWithLogging(ServerCommands.HELP_250, SERVER_LABEL);
                     mailPackage.Host = line.Replace(ClientCommands.EHLO, string.Empty).Trim();
                 }
+
+                //NOOP = No Operation, this equivalent to a ping
+                else if (line.StartsWith(ClientCommands.NOOP))
+                {
+                    _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
+                }
+
+                //STARTTLS - Start Transport Layer Security
                 else if (line.StartsWith(ClientCommands.STARTTLS))
                 {
                     //make sure security mode is set to STARTTLS
-                    if(_SecurityMode == SmtpSecurity.STARTTLS)
+                    if (_SecurityMode == SmtpSecurity.STARTTLS)
                     {
                         _Writer.WriteLineWithLogging(ServerCommands.READY_FOR_STARTTLS, SERVER_LABEL);
 
@@ -89,11 +99,13 @@ namespace Service
                         PrepareWriterStream();
                     }
                 }
+                //MAIL FROM = sender address. Indicates start of email transaction
                 else if (line.StartsWith(ClientCommands.MAIL_FROM))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
                     mailPackage.From = line.Replace(ClientCommands.MAIL_FROM, string.Empty).Trim();
                 }
+                //
                 else if (line.StartsWith(ClientCommands.RCPT_TO))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
@@ -111,7 +123,7 @@ namespace Service
                     _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
 
                 }
-                else if(line.StartsWith(ClientCommands.QUIT))
+                else if (line.StartsWith(ClientCommands.QUIT))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.BYE_221, SERVER_LABEL);
                 }
@@ -189,6 +201,7 @@ namespace Service
             public const string STARTTLS = "STARTTLS";
             public const string EHLO = "EHLO";
             public const string HELO = "HELO";
+            public const string NOOP = "NOOP";
             public const string RCPT_TO = "RCPT TO";
             public const string MAIL_FROM = "MAIL FROM";
             public const string QUIT = "QUIT";
