@@ -193,7 +193,7 @@ namespace Service
                 {
                     //process client
                     activity.Log("Exchanging Commands");
-                    using (SmtpClientProcessor clientProcessor = new SmtpClientProcessor(client, info.SecurityMode, ServerCertificate))
+                    using (SmtpStreamProcessor clientProcessor = new SmtpStreamProcessor(client.GetStream(), info.SecurityMode, ServerCertificate))
                     {
                         clientProcessor.Process();
                     }

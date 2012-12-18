@@ -9,12 +9,12 @@ using System.IO;
 
 namespace Service
 {
-    public class SmtpClientProcessor : IDisposable
-    {
-        private TcpClient _Client;
+    public class SmtpStreamProcessor : IDisposable
+    {  
         private SmtpSecurity _SecurityMode;
         private X509Certificate _Certificate;
-        private Stream _UnderlyingStream;
+        private Stream _SourceStream;
+        private Stream _IntermediateStream;
         private LoggingStreamReader _Reader;
         private LoggingStreamWriter _Writer;
         private ScopedActivity _Activity;
@@ -25,14 +25,14 @@ namespace Service
 
         #region Initialization
 
-        public SmtpClientProcessor(TcpClient client )
-            : this(client, SmtpSecurity.None, null)
+        public SmtpStreamProcessor(Stream stream)
+            : this(stream, SmtpSecurity.None, null)
         { 
         }
 
-        public SmtpClientProcessor(TcpClient client, SmtpSecurity securityMode, X509Certificate certificate)
+        public SmtpStreamProcessor(Stream stream, SmtpSecurity securityMode, X509Certificate certificate)
         {           
-            _Client = client;
+            _SourceStream = stream;
             _SecurityMode = securityMode;
             _Certificate = certificate;
             _Activity = new ScopedActivity("SmtpClientProcessor");
@@ -44,7 +44,7 @@ namespace Service
         public void Process()
         {
             //establish data streams
-            PrepareUnderlyingDataStream();
+            PrepareIntermediateDataStream();
             PrepareReaderStream();
             PrepareWriterStream();
 
@@ -93,7 +93,7 @@ namespace Service
                         _Writer.WriteLineWithLogging(ServerCommands.READY_FOR_STARTTLS, SERVER_LABEL);
 
                         //switch to over to ssl
-                        _UnderlyingStream = EstablishSsl();
+                        _IntermediateStream = EstablishSsl();
                         PrepareReaderStream();
                         PrepareWriterStream();
                     }
@@ -136,7 +136,7 @@ namespace Service
 
                         mailPackage.ReferenceId = _Activity.ActivityId;
                         byte[] dataStreamTerminator = _Reader.CurrentEncoding.GetBytes("/r/n./r/n");
-                        Stream data = new SequenceTerminatingStream(_UnderlyingStream, dataStreamTerminator);
+                        Stream data = new SequenceTerminatingStream(_IntermediateStream, dataStreamTerminator);
                         _MailPackageQueue.Add(mailPackage, data);
 
                         _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
@@ -175,27 +175,27 @@ namespace Service
             }
         }
  
-        private void PrepareUnderlyingDataStream()
+        private void PrepareIntermediateDataStream()
         {
             //if ssl security, perform server authentication
             if (_SecurityMode == SmtpSecurity.SSL)
             {
-                _UnderlyingStream = EstablishSsl();
+                _IntermediateStream = EstablishSsl();
             }
             else
             {
-                _UnderlyingStream = _Client.GetStream();
+                _IntermediateStream = _SourceStream;
             }
         }
 
         private void PrepareReaderStream()
         {
-            _Reader = new LoggingStreamReader(_UnderlyingStream, _Activity);
+            _Reader = new LoggingStreamReader(_IntermediateStream, _Activity);
         }
 
         private void PrepareWriterStream()
         {
-            _Writer = new LoggingStreamWriter(_UnderlyingStream, _Activity);
+            _Writer = new LoggingStreamWriter(_IntermediateStream, _Activity);
             _Writer.AutoFlush = true;
             _Writer.NewLine = "\r\n";
         }
@@ -203,7 +203,7 @@ namespace Service
         private SslStream EstablishSsl()
         {
             //perform server authentication, do not authenticate client
-            SslStream ssl = new SslStream(_Client.GetStream(), false);
+            SslStream ssl = new SslStream(_SourceStream, false);
             ssl.AuthenticateAsServer(_Certificate, false, System.Security.Authentication.SslProtocols.Default, false);            
 
             //throw exception if authentication failed
@@ -227,9 +227,9 @@ namespace Service
                 {
                     _Reader.Dispose();
                 }
-                if (_UnderlyingStream != null)
+                if (_IntermediateStream != null)
                 {
-                    _UnderlyingStream.Dispose();
+                    _IntermediateStream.Dispose();
                 }
             }
             finally

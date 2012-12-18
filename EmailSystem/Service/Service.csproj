@@ -58,7 +58,7 @@
     <Compile Include="Core\MailPackage.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Core\SmtpClientProcessor.cs" />
+    <Compile Include="Core\SmtpStreamProcessor.cs" />
     <Compile Include="Core\SmtpListener.cs" />
     <Compile Include="Core\SmtpSecurity.cs" />
     <Compile Include="Utility\Tests.cs" />
