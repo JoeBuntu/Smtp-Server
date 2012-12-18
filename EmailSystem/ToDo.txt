@@ -13,3 +13,4 @@ Items
 
 	5. Improved command support
 
+	6. ReadLine limited by 1000
