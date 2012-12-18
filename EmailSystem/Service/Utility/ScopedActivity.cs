@@ -15,7 +15,7 @@ namespace Service
         public ScopedActivity(string name, bool transfer = true)
         {
             ActivityId = Guid.NewGuid();
-            TraceSource = Utility.CreateTraceSource();
+            TraceSource = new TraceSource("EmailingSystem.Service", SourceLevels.All);
 
             //if transferring from previous activity...
             if (transfer)

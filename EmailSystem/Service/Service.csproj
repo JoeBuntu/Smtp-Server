@@ -49,7 +49,7 @@
     <Compile Include="Utility\SequenceTerminatingStream.cs" />
     <Compile Include="Utility\FileSystemMailPackageQueue.cs" />
     <Compile Include="Utility\MsmqMailPackageQueue.cs" />
-    <Compile Include="Abstract\FileSystemStreamRepository.cs" />
+    <Compile Include="Utility\FileSystemStreamRepository.cs" />
     <Compile Include="Utility\ScopedActivity.cs" />
     <Compile Include="Abstract\IMailPackageQueue.cs" />
     <Compile Include="Utility\Kernel.cs" />
@@ -61,8 +61,7 @@
     <Compile Include="Core\SmtpStreamProcessor.cs" />
     <Compile Include="Core\SmtpListener.cs" />
     <Compile Include="Core\SmtpSecurity.cs" />
-    <Compile Include="Utility\Tests.cs" />
-    <Compile Include="Utility\Utility.cs" />
+    <Compile Include="Tests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
