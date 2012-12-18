@@ -6,6 +6,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{78DF5D43-80DE-46F1-9990-B63BA6E3721D}"
 	ProjectSection(SolutionItems) = preProject
 		Architecture.txt = Architecture.txt
+		ToDo.txt = ToDo.txt
 	EndProjectSection
 EndProject
 Global
