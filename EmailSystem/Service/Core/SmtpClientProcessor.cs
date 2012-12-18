@@ -98,6 +98,16 @@ namespace Service
                         PrepareWriterStream();
                     }
                 }
+                //VRFY - used to confirm users, not implementing at this time
+                else if (line.StartsWith(ClientCommands.VRFY))
+                {
+                    _Writer.WriteLineWithLogging(ServerCommands.ERROR_COMMAND_NOT_IMPLEMENTED, SERVER_LABEL);
+                }
+                //EXPN - expand? not implementing at this time
+                else if(line.StartsWith(ClientCommands.EXPN))
+                {
+                    _Writer.WriteLineWithLogging(ServerCommands.ERROR_COMMAND_NOT_IMPLEMENTED, SERVER_LABEL);
+                }
                 //MAIL FROM = sender address. Indicates start of email transaction
                 else if (line.StartsWith(ClientCommands.MAIL_FROM))
                 {
@@ -105,7 +115,7 @@ namespace Service
                     _CurrentMailPackage.From = null;
                     _CurrentMailPackage.Tos.Clear();
                     _CurrentMailPackage.Received = DateTime.Now;
-                     
+
                     //respond
                     _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
                     mailPackage.From = line.Replace(ClientCommands.MAIL_FROM, string.Empty).Trim();
@@ -146,6 +156,11 @@ namespace Service
                 else if (line.StartsWith(ClientCommands.QUIT))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.BYE_221, SERVER_LABEL);
+                }
+                //unknown command
+                else
+                {
+                    _Writer.WriteLineWithLogging(ServerCommands.ERROR_COMMAND_UNRECOGNIZED, SERVER_LABEL);
                 }
             } 
         }
@@ -237,6 +252,8 @@ namespace Service
             public const string QUIT = "QUIT";
             public const string DATA = "DATA";
             public const string END_DATA = ".";
+            public const string VRFY = "VRFY";
+            public const string EXPN = "EXPN";
 
         }
 
@@ -254,6 +271,9 @@ namespace Service
 
             public const string ERROR_COMMAND_OUT_OF_SEQUENCE = "503";
             public const string ERROR_NO_VALID_RECIPIENTS = "554";
+            public const string ERROR_COMMAND_NOT_IMPLEMENTED = "502";
+            public const string ERROR_COMMAND_UNRECOGNIZED = "500";
+            public const string ERROR_TRANSACTION_FAILED = "554";       
 
             public const string START_DATA_354 = "354 Start mail input; end with";
         }
