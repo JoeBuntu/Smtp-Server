@@ -21,6 +21,7 @@ namespace Service
         private IMailPackageQueue _MailPackageQueue;
         private const string SERVER_LABEL = "S";
         private const string CLIENT_LABEL = "C";
+        private MailPackage _CurrentMailPackage;
 
         #region Initialization
 
@@ -53,7 +54,6 @@ namespace Service
         private void ProcessCore()
         {
             MailPackage mailPackage = new MailPackage();
-            mailPackage.Received = DateTime.Now;
 
             //first and foremost issue standard greeting
             _Writer.WriteLineWithLogging(ServerCommands.GREETING_220, SERVER_LABEL);
@@ -101,6 +101,12 @@ namespace Service
                 //MAIL FROM = sender address. Indicates start of email transaction
                 else if (line.StartsWith(ClientCommands.MAIL_FROM))
                 {
+                    //clear out forward-path, reverse-path and data 'buffers'
+                    _CurrentMailPackage.From = null;
+                    _CurrentMailPackage.Tos.Clear();
+                    _CurrentMailPackage.Received = DateTime.Now;
+                     
+                    //respond
                     _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
                     mailPackage.From = line.Replace(ClientCommands.MAIL_FROM, string.Empty).Trim();
                 }
@@ -112,22 +118,46 @@ namespace Service
                 }
                 else if (line.StartsWith(ClientCommands.DATA))
                 {
-                    _Writer.WriteLineWithLogging(ServerCommands.START_DATA_354, SERVER_LABEL);
-                    _Activity.Log("Reading data...");
+                    //only accept data if other parts of mail transaction have been fullfilled
+                    if (OkToRecieveData)
+                    {
+                        _Writer.WriteLineWithLogging(ServerCommands.START_DATA_354, SERVER_LABEL);
+                        _Activity.Log("Reading data...");
 
-                    mailPackage.ReferenceId = _Activity.ActivityId;
-                    byte[] dataStreamTerminator = _Reader.CurrentEncoding.GetBytes("/r/n./r/n");
-                    Stream data = new SequenceTerminatingStream(_UnderlyingStream, dataStreamTerminator);
-                    _MailPackageQueue.Add(mailPackage, data);
+                        mailPackage.ReferenceId = _Activity.ActivityId;
+                        byte[] dataStreamTerminator = _Reader.CurrentEncoding.GetBytes("/r/n./r/n");
+                        Stream data = new SequenceTerminatingStream(_UnderlyingStream, dataStreamTerminator);
+                        _MailPackageQueue.Add(mailPackage, data);
 
-                    _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
-
+                        _Writer.WriteLineWithLogging(ServerCommands.OK_250, SERVER_LABEL);
+                    }
+                    else
+                    {
+                        if (_CurrentMailPackage.Tos.Any())
+                        {
+                            _Writer.WriteLineWithLogging(ServerCommands.ERROR_COMMAND_OUT_OF_SEQUENCE, SERVER_LABEL);
+                        }
+                        else
+                        {
+                            _Writer.WriteLineWithLogging(ServerCommands.ERROR_NO_VALID_RECIPIENTS, SERVER_LABEL);
+                        }
+                    }
                 }
                 else if (line.StartsWith(ClientCommands.QUIT))
                 {
                     _Writer.WriteLineWithLogging(ServerCommands.BYE_221, SERVER_LABEL);
                 }
             } 
+        }
+
+        private bool OkToRecieveData
+        {
+            get
+            {
+                return _CurrentMailPackage != null
+                    && _CurrentMailPackage.From != null
+                    && _CurrentMailPackage.Tos.Any();
+            }
         }
  
         private void PrepareUnderlyingDataStream()
@@ -207,6 +237,7 @@ namespace Service
             public const string QUIT = "QUIT";
             public const string DATA = "DATA";
             public const string END_DATA = ".";
+
         }
 
         private static class ServerCommands
@@ -220,6 +251,9 @@ namespace Service
             public const string SIZE_250 = "250-SIZE 10000000";
             public const string STARTTLS_250 = "250-STARTTLS";
             public const string HELP_250 = "250 HELP";
+
+            public const string ERROR_COMMAND_OUT_OF_SEQUENCE = "503";
+            public const string ERROR_NO_VALID_RECIPIENTS = "554";
 
             public const string START_DATA_354 = "354 Start mail input; end with";
         }
